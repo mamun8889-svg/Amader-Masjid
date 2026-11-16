@@ -74,7 +74,8 @@
   email:function(){return sess&&sess.email},
   signOut:signOut
  };
- function signOut(){
+ function signOut(w){
+  if(w&&sess){ldel(OK+String(sess.email).toLowerCase());ldel(CK+'ut_'+sess.uid);ldel(QK+sess.uid);ldel(QK+'c_'+sess.uid)}
   if(sess&&!offHas(sess.email)){ldel(CK+sess.uid);ldel(CK+'cv_'+sess.uid)}ldel(CK+'pub');ldel(CK+'cv_pub');CVm={};
   ldel(SK);sess=null;store={};loaded={};UT={};Q=[];C=[];stopPoll();
  }
@@ -2100,7 +2101,7 @@ function startApp(){
   $('txDate').value=today();
   fillMonthSelect();applyMode();$('dnDate').value=new Date().toISOString().slice(0,10);renderAll();
   if(S.DB){
-    const dbErr=()=>{};
+    const dbErr=e=>{if(e&&e.code!=='network'&&!S._dbe){S._dbe=1;try{toast('কিছু তথ্য আনা যায়নি। পেজ রিলোড করুন; না হলে লগআউট করে ঢুকুন।')}catch(x){}}};
     S.pubF={};S.pubJS={};const pubSeen={};[['fs','sal'],['fg','gen'],['fr','ram']].forEach(([d,f])=>S.DB.doc('pub/'+d).onSnapshot(s=>{S.pubF[f]=s.exists?s.data():null;S.pubJS[f]=s.exists?JSON.stringify(s.data().months)+(f==='ram'?JSON.stringify(s.data().yr||{}):'')+(f==='sal'?JSON.stringify(s.data().ms||null):''):null;pubSeen[f]=1;if(pubSeen.sal&&pubSeen.gen&&pubSeen.ram)S.pubLoaded=true;sched()},dbErr));
     S.DB.doc('pub/settings').onSnapshot(s=>{const _zb=S.pset&&S.pset.zeroBase;S.pset=s.exists?s.data():null;S.psetLoaded=true;if(ZB()&&_zb!==S.pset.zeroBase){try{S.edits=Object.fromEntries(Object.entries(S.edits||{}).filter(([k,x])=>(x.t||0)>S.pset.zeroBase))}catch(e){}['tx','payments'].forEach(k=>{if(S[k])S[k]=S[k].filter(x=>(x.created||x.t||x.at||0)>S.pset.zeroBase)})}sched()},dbErr);S.DB.doc('pub/donate').onSnapshot(s=>{S.donate=s.exists?s.data():null;sched()},dbErr);
     col('edits').onSnapshot(s=>{S.edits={};S.hidE=0;s.docs.forEach(d=>{const x=d.data();if(ZB()&&!((x.t||0)>S.pset.zeroBase)){S.hidE++;return}S.edits[d.id]=x});sched()},dbErr);
@@ -2158,7 +2159,7 @@ async function seedUpload(){
 }
 async function loadRole(){
   const rs=await S.DB.doc('roles/'+A.uid()).get(),r=rs.exists?rs.data():null;
-  if(!r||(r.role!=='admin'&&r.role!=='viewer'&&r.role!=='super'))throw new Error('noaccess');
+  if(!r||r.status==='disabled'||(r.role!=='admin'&&r.role!=='viewer'&&r.role!=='super'))throw new Error('noaccess');
   return r;
 }
 async function ensureData(isAdmin){
@@ -2199,6 +2200,7 @@ async function enterApp(){
   const [r,ap0]=await Promise.all([loadRole(),S.DB.doc('appdata/main').get().catch(()=>null)]);
   let gOk;try{gOk=await deviceGate(r)}catch(e){if(r.role!=='super')throw e;gOk=true}if(!gOk)return;
   S.admin=r.role==='admin'||r.role==='super';S.super=r.role==='super';S.canEdit=S.admin;S.acctId=A.uid();S.acct={name:r.name||dispId(A.email()),role:r.role};
+  if(S.admin&&!S.super){const pd=await S.DB.doc('perm/admin').get().catch(()=>null);if(pd){S.perm=pd.exists?pd.data():null;S.permLoaded=true}}
   initData(ap0&&ap0.exists?ap0.data():await ensureData(S.admin));startApp();
 }
 function showGate(msg,retry){$('gate').style.display='';$('lErr').textContent=msg||'';$('gRetry').hidden=!retry;$('gClose').hidden=!S.started}
@@ -2232,7 +2234,7 @@ async function doLogin(e){
   $('gEnter').disabled=false;$('gEnter').textContent='লগইন করুন';
 }
 $('loginForm').addEventListener('submit',doLogin);
-$('logoutBtn').onclick=async()=>{let n=0;try{n=A.sync.pending().length}catch(e){}if(n>0&&!(await askConfirm('এখনো '+n+'টি পরিবর্তন সার্ভারে যায়নি (ইন্টারনেট নেই)। এখন লগআউট করলে সেগুলো মুছে যাবে। তবুও লগআউট করবেন?','লগআউট')))return;A.signOut();location.reload()};
+$('logoutBtn').onclick=async()=>{let n=0;try{n=A.sync.pending().length}catch(e){}if(n>0&&!(await askConfirm('এখনো '+n+'টি পরিবর্তন সার্ভারে যায়নি (ইন্টারনেট নেই)। এখন লগআউট করলে সেগুলো মুছে যাবে। তবুও লগআউট করবেন?','লগআউট')))return;A.signOut(true);location.reload()};
 $('loginBtn').onclick=()=>showGate('',false);
 $('gClose').onclick=()=>{$('gate').style.display='none'};
 $('gRetry').onclick=()=>location.reload();
@@ -3180,10 +3182,11 @@ document.addEventListener('change',e=>{if(e.target&&e.target.id==='devLockCb'&&S
 function renderAccounts(){
   renderDevices();
   const list=S.accounts||[];
-  $('acctTable').innerHTML=table(['নাম','ইউজার নেম','ভূমিকা','কাজ'],list.map(a=>`<tr><td><b>${esc(a.name||'—')}</b>${a.id===S.acctId?' <span class="tag in">আপনি</span>':''}</td><td>${esc(a.uname||dispId(a.email||''))}</td><td><span class="tag ${a.role!=='viewer'?'in':''}">${ROLE_BN[a.role]||'সদস্য'}</span></td><td>${a.id===S.acctId?'':`<button class="btn sec sm" onclick="flipRole('${a.id}')">ভূমিকা বদলান</button> <button class="btn dng sm" onclick="delAcct('${a.id}')">মুছুন</button>`}</td></tr>`),'কোনো ব্যবহারকারী নেই');
+  $('acctTable').innerHTML=table(['নাম','ইউজার নেম','ভূমিকা','কাজ'],list.map(a=>`<tr><td><b>${esc(a.name||'—')}</b>${a.id===S.acctId?' <span class="tag in">আপনি</span>':''}</td><td>${esc(a.uname||dispId(a.email||''))}</td><td><span class="tag ${a.role!=='viewer'?'in':''}">${ROLE_BN[a.role]||'সদস্য'}</span></td><td>${a.id===S.acctId?'':`<button class="btn sec sm" onclick="flipRole('${a.id}')">ভূমিকা বদলান</button> <button class="btn sec sm" onclick="toggleAcct('${a.id}')">${a.status==='disabled'?'চালু করুন':'বন্ধ করুন'}</button> <button class="btn dng sm" onclick="delAcct('${a.id}')">মুছুন</button>`}</td></tr>`),'কোনো ব্যবহারকারী নেই');
 }
-async function flipRole(id){if(!needDb())return;const a=(S.accounts||[]).find(x=>x.id===id);if(!a||a.role==='super')return;safe(S.DB.doc('roles/'+id).update({role:a.role==='admin'?'viewer':'admin'}),'ভূমিকা বদলানো হয়েছে')}
-async function delAcct(id){if(!needDb())return;{const _a=(S.accounts||[]).find(x=>x.id===id);if(_a&&_a.role==='super'){toast('সুপার অ্যাডমিনকে মুছা যাবে না');return}}if(await askConfirm('মুছলে এই ব্যক্তি আর তথ্য দেখতে পারবেন না।','মুছুন'))safe(col('roles').doc(id).delete(),'ব্যবহারকারী মুছে ফেলা হয়েছে')}
+async function flipRole(id){if(!needDb())return;const a=(S.accounts||[]).find(x=>x.id===id);if(!a||a.role==='super')return;{audit('ভূমিকা বদল',(a.name||id)+' → '+(a.role==='admin'?'সদস্য':'অ্যাডমিন'));safe(S.DB.doc('roles/'+id).update({role:a.role==='admin'?'viewer':'admin'}),'ভূমিকা বদলানো হয়েছে')}}
+async function toggleAcct(id){if(!needDb())return;const a=(S.accounts||[]).find(x=>x.id===id);if(!a||a.role==='super'||id===S.acctId)return;const off=a.status!=='disabled';if(off&&!(await askConfirm('বন্ধ করলে এই ব্যক্তি আর ঢুকতে পারবেন না (পরে চালু করা যাবে)।','বন্ধ করুন')))return;audit(off?'অ্যাকাউন্ট বন্ধ':'অ্যাকাউন্ট চালু',a.name||id);safe(S.DB.doc('roles/'+id).update({status:off?'disabled':'active'}),off?'অ্যাকাউন্ট বন্ধ করা হয়েছে':'অ্যাকাউন্ট চালু করা হয়েছে')}
+async function delAcct(id){if(!needDb())return;{const _a=(S.accounts||[]).find(x=>x.id===id);if(_a&&_a.role==='super'){toast('সুপার অ্যাডমিনকে মুছা যাবে না');return}}if(await askConfirm('মুছলে এই ব্যক্তি আর তথ্য দেখতে পারবেন না।','মুছুন')){const _b=(S.accounts||[]).find(x=>x.id===id);audit('ব্যবহারকারী মুছে ফেলা',(_b&&_b.name)||id);safe(col('roles').doc(id).delete(),'ব্যবহারকারী মুছে ফেলা হয়েছে')}}
 $('acctForm').addEventListener('submit',async e=>{
   e.preventDefault();if(!needDb())return;
   const id=normId($('aId').value),pw=$('aPw').value;
@@ -3204,7 +3207,18 @@ $('acctForm').addEventListener('submit',async e=>{
   $('gEnter').disabled=false;if(window.Android&&window.Android.ready)window.Android.ready();
   const st=await A.restore();
   let noacc=false;
-  if(st){try{await enterApp();return}catch(e){if(!(e&&e.code==='network')){noacc=String((e&&e.message)||'')==='noaccess';A.signOut()}}}
+  if(st){try{await enterApp();return}catch(e){
+    try{localStorage.setItem('bm_lasterr',JSON.stringify({t:Date.now(),c:e&&e.code,m:String((e&&e.message)||'').slice(0,120)}))}catch(x){}
+    const em=String((e&&e.message)||'');
+    if(em==='noaccess'){noacc=true;A.signOut()}
+    else if(em==='SESSION_EXPIRED'||!A.uid()){/* সেশন সত্যিই শেষ — পাবলিক ভিউ */}
+    else{
+      /* সাময়িক ত্রুটি: সেশন মুছব না, শুধু আবার চেষ্টার সুযোগ দেব */
+      const c=e&&e.code;
+      showGate(c==='network'?'ইন্টারনেট সংযোগ নেই। আপনি লগইনেই আছেন; সংযোগ এলে নিচের বাটনে আবার চেষ্টা করুন।':c==='server'?'সার্ভার এখন ব্যস্ত বা দৈনিক সীমা শেষ। আপনি লগইনেই আছেন; একটু পরে আবার চেষ্টা করুন।':c==='invalid_argument'?'অনুমতি যাচাই করা যায়নি। আবার চেষ্টা করুন; না হলে লগআউট করে নতুন করে ঢুকুন।':'সমস্যা হয়েছে। আপনি লগইনেই আছেন; আবার চেষ্টা করুন।',true);
+      return;
+    }
+  }}
   await enterPublic();
   if(noacc)try{toast('এই ইমেইলের লগইন অনুমতি নেই। অ্যাডমিনের সাথে যোগাযোগ করুন।')}catch(e){}
 })();
@@ -3893,7 +3907,7 @@ function payerLedger(name){
 
 /* ===== v26: সার্চ, নিজের হিসাব, অফলাইন বার্তা, নতুন সংস্করণ ===== */
 (function(){
-  const APP_VER=96;window.APP_VER_N=96;window.APP_NAME='2.0.0-web';
+  const APP_VER=99;window.APP_VER_N=99;window.APP_NAME='2.0.5-web';
   /* সার্চ: আয়-ব্যয় ও কর্মচারী */
   [['txTable','আয়-ব্যয় খুঁজুন…'],['staffTable','কর্মচারী খুঁজুন…']].forEach(([id,ph])=>{
     const t=$(id);if(!t)return;const inp=document.createElement('input');inp.placeholder=ph;inp.style.cssText='width:100%;margin:10px 0 0';inp.type='search';t.before(inp);
@@ -6179,7 +6193,7 @@ html.lgc:root:root body .gbox .glogo::before{width:100%!important;height:100%!im
 /* ===== v1.9.21 ওয়েব: বড় পর্দা (ডেস্কটপ/ট্যাবলেট) ===== */
 (function(){
  const st=document.createElement('style');st.textContent=`
-@media(min-width:1025px){
+@media(min-width:900px){
  :root:root body #bnav,:root:root body #moreBk,:root:root body #moreSh{display:none!important}
  :root:root body .shell:not([hidden]){padding-bottom:40px!important}
  :root:root body.admin .side{position:sticky;top:0;z-index:120}
@@ -6203,7 +6217,7 @@ html.lgc:root:root body .gbox .glogo::before{width:100%!important;height:100%!im
  .hero .dcard{margin-left:auto;margin-right:auto}
 }
 @media(min-width:1500px){:root:root body .wrapc{max-width:1320px!important}}
-@media(min-width:1025px) and (max-width:1200px){#kpis.rkg{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(min-width:900px) and (max-width:1200px){#kpis.rkg{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 `;document.head.appendChild(st);
  function hh(){try{const s=document.querySelector('.side .row');const h=s?s.getBoundingClientRect().height:0;const sd=document.querySelector('.side');const H=sd?Math.round(sd.getBoundingClientRect().height):94;document.documentElement.style.setProperty('--hh',H+'px')}catch(e){}}
  hh();addEventListener('resize',hh);setInterval(hh,1500);
@@ -6230,6 +6244,72 @@ html.lgc:root:root body .gbox .glogo::before{width:100%!important;height:100%!im
  /* ইনস্টল বাটন (ক্রোম/অ্যান্ড্রয়েড/ডেস্কটপ) */
  let dp=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;const h=document.querySelector('.side .sright');if(!h||document.getElementById('pwaBtn'))return;const b=document.createElement('button');b.id='pwaBtn';b.className='pill';b.type='button';b.textContent='⬇ অ্যাপ ইনস্টল';b.onclick=async()=>{try{dp.prompt();await dp.userChoice}catch(e){}dp=null;b.remove()};h.prepend(b)});
 })();
+
+(function(){const st=document.createElement('style');st.textContent="\n/* ===== v2.0.1 ওয়েব ডিজাইন: পরিষ্কার সলিড কার্ড ===== */\n@media(min-width:900px){\n html.web:root:root body{background:var(--bg)!important}\n html.web:root:root body #pgbg{opacity:.07!important;filter:saturate(.7)}\n @media(prefers-color-scheme:dark){html.web:root:not([data-theme=\"light\"]) body #pgbg{opacity:.14!important}}\n html.web:root[data-theme=\"dark\"] body #pgbg{opacity:.14!important}\n html.web:root:root body .panel,html.web:root:root body .card,html.web:root:root body .tablewrap,html.web:root:root body .ftrig,html.web:root:root body details.sxp,html.web:root:root body .sxp{background:var(--surface)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border:1px solid var(--line)!important;border-radius:18px!important;box-shadow:0 1px 2px #1a24401a,0 8px 24px -14px #1a244033!important}\n html.web:root:root body .tablewrap{overflow:auto}\n html.web:root:root body .tablewrap td,html.web:root:root body .tablewrap th{background-clip:padding-box}\n html.web:root:root body #salTable td:not(.stick1):not(.stick2),html.web:root:root body #salTable th:not(.stick1):not(.stick2){background:var(--surface)}\n html.web:root:root body input,html.web:root:root body select,html.web:root:root body textarea{background:var(--surface2)!important;border:1px solid var(--line)!important;color:var(--ink)!important}\n html.web:root:root body .sec-head h3{font-size:26px;letter-spacing:-.2px}\n html.web:root:root body .sec-head .sub{opacity:.8}\n html.web:root:root body .hero{border-radius:22px;box-shadow:0 18px 40px -22px #0a3d2e99}\n html.web:root:root body .hero *{color:inherit}\n html.web:root:root body #settings .sxhero,html.web:root:root body #settings .sxhero *{color:#fff!important}\n \n /* সাধারণ ভিউ: ওপরে ট্যাব সারি */\n html.web:root:root body.pubOn .side .tabs#nav{display:flex!important;position:static!important;transform:none!important;width:auto!important;max-width:1240px;margin:0 auto!important;flex-direction:row!important;justify-content:center;gap:6px;padding:2px 20px 12px!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible}\n html.web:root:root body.pubOn .side .tabs#nav button{width:auto!important;color:#fff!important;background:#ffffff1f!important;border-radius:999px;padding:8px 18px;font-size:14.5px;gap:8px}\n html.web:root:root body.pubOn .side .tabs#nav button.active{background:#f0b429!important;color:#2c1f03!important}\n html.web:root:root body.pubOn .side .tabs#nav button svg{stroke:currentColor}\n html.web:root:root body.pubOn .work{margin-left:0!important}\n\n /* গোল চার্ট কার্ড */\n html.web:root:root body #kpis .kpi.rk{background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:20px!important;box-shadow:0 1px 2px #1a24401a,0 10px 26px -16px #1a244044!important;padding:16px 16px!important;min-height:104px!important;transition:transform .15s,box-shadow .15s}\n html.web:root:root body #kpis .kpi.rk:hover{transform:translateY(-2px);box-shadow:0 14px 30px -14px #1a244055!important}\n html.web:root:root body #kpis .kpi.rk .rg{filter:none;flex-basis:68px!important;width:68px;height:68px}\n html.web:root:root body #kpis .kpi.rk .lb{font-size:13px!important;color:var(--muted)!important;opacity:1;text-shadow:none!important}\n html.web:root:root body #kpis .kpi.rk .vl{font-size:21px!important;color:var(--ink)!important;text-shadow:none!important}\n html.web:root:root body #kpis .kpi.rk .sb{font-size:11.5px!important;color:var(--muted)!important;text-shadow:none!important}\n html.web:root:root body #kpis .kpi.rk .rg b{color:var(--ink)}\n html.web:root:root body #kpis .kpi.rk .rg .rb.nu{stroke:var(--line)}\n html.web:root:root body #kpis.rkg{gap:16px!important}\n /* পাশের মেনু */\n html.web:root:root body:not(.pubOn) .side .tabs#nav{background:var(--surface)!important;border-right:1px solid var(--line)!important;padding:14px 12px 24px!important}\n html.web:root:root body:not(.pubOn) .side .tabs#nav button{font-size:14.5px;padding:10px 14px;gap:12px;border-radius:11px}\n html.web:root:root body:not(.pubOn) .side .tabs#nav button svg{width:20px;height:20px}\n html.web:root:root body .work>.wrapc{max-width:1240px!important;margin:0 auto!important;padding:20px 28px 40px!important}\n html.web:root:root body #duesPanel .chips .chip,html.web:root:root body .chips .chip{background:var(--surface2)}\n html.web:root:root body .toast{background:var(--ink);color:var(--surface)}\n}\n@media(min-width:900px) and (max-width:1199px){html.web:root:root body:not(.pubOn) .work{margin-left:236px!important}html.web:root:root body:not(.pubOn) .side .tabs#nav{width:236px!important}html.web:root:root body .work>.wrapc{padding:16px 18px 36px!important}}\n";document.head.appendChild(st)})();
+
+/* ===== v2.0.2: লাইট মোডে পড়ার সুবিধা + ফোনে Desktop-site সতর্কবার্তা ===== */
+(function(){
+ const L=s=>`:root[data-theme="light"] ${s},:root:not([data-theme="dark"]) ${s}`;
+ /* prefers-color-scheme:dark হলে :root:not([data-theme=dark]) মিলবে না — তাই light মিডিয়া আলাদা */
+ const light=`
+:root:not([data-theme="dark"]) #pgbg::after{content:"";position:absolute;inset:0;background:rgba(244,246,251,.6)}
+:root:not([data-theme="dark"]) body #kpis .kpi.rk{background:rgba(255,255,255,.9)!important;border:1px solid rgba(20,30,60,.08)!important;border-radius:18px!important;box-shadow:0 6px 18px -12px rgba(20,30,60,.35)!important;padding:10px 10px!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+:root:not([data-theme="dark"]) body #kpis .kpi.rk .lb{color:#34405e!important;opacity:1!important;text-shadow:none!important;font-weight:600}
+:root:not([data-theme="dark"]) body #kpis .kpi.rk .vl{color:#0f1a33!important;text-shadow:none!important}
+:root:not([data-theme="dark"]) body #kpis .kpi.rk .sb{color:#4d5a78!important;opacity:1!important;text-shadow:none!important}
+:root:not([data-theme="dark"]) body #kpis .kpi.rk .rg b{color:#0f1a33}
+:root:not([data-theme="dark"]) body #kpis .kpi.rk .rg .rb.nu{stroke:#dfe4ef}
+:root:not([data-theme="dark"]) body .panel,:root:not([data-theme="dark"]) body .card{background:rgba(255,255,255,.94)!important}
+:root:not([data-theme="dark"]) body .sec-head .sub,:root:not([data-theme="dark"]) body .hint2{color:#4d5a78!important;opacity:1!important}
+:root:not([data-theme="dark"]) body .foot,:root:not([data-theme="dark"]) body footer{color:#4d5a78!important}
+`;
+ /* সিস্টেম ডার্ক থাকলে এবং থিম auto হলে এই নিয়ম প্রযোজ্য নয়: media দিয়ে সীমাবদ্ধ */
+ const st=document.createElement('style');
+ st.textContent=`@media(prefers-color-scheme:light){${light}}`+light.replace(/:root:not\(\[data-theme="dark"\]\)/g,':root[data-theme="light"]');
+ document.head.appendChild(st);
+ /* ফোনে "Desktop site" চালু থাকলে জানানো */
+ try{
+  const small=Math.min(screen.width,screen.height)<=700, wide=innerWidth>=900;
+  if(small&&wide&&!window.Android&&!sessionStorage.getItem('bm_dsk')){
+   const d=document.createElement('div');d.id='dskNote';
+   d.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:96px;z-index:9999;max-width:90vw;padding:14px 18px;border-radius:14px;background:#7c2d12;color:#fff;font:600 28px/1.5 system-ui,sans-serif;box-shadow:0 10px 30px #0008;text-align:center';
+   d.innerHTML='ফোনে ব্রাউজারের "Desktop site" চালু আছে। মোবাইল ডিজাইন দেখতে Chrome-এর ⋮ মেনু থেকে "Desktop site" বন্ধ করুন (আর Settings → Accessibility → Default zoom ১০০% রাখুন)।<br><button style="margin-top:10px;padding:6px 18px;border:0;border-radius:99px;font:700 26px system-ui;background:#fcd34d">ঠিক আছে</button>';
+   d.querySelector('button').onclick=()=>{d.remove();try{sessionStorage.setItem('bm_dsk','1')}catch(e){}};
+   document.body.appendChild(d)}
+ }catch(e){}
+})();
+})();
+/* ===== v2.0.5/1.9.24: পাবলিক হোমে নোটিশ নিচে, নিচের নেভ বাদ, অনুদান বক্স নতুন রঙ, হেডার ও তারিখ বক্স ঠিক ===== */
+(function(){
+ const st=document.createElement('style');st.textContent=`
+body.pubOn #bnav,body.pubOn #moreBk,body.pubOn #moreSh{display:none!important}
+body.pubOn .work{padding-bottom:28px!important}
+#homeDonate .dn2{background:linear-gradient(135deg,#b45309,#7c2d12)!important}
+.hero .dcard{margin-left:auto!important;margin-right:auto!important}
+#homeNotices{margin:14px 0 8px}
+#homeNotices .sec-head h3{margin:0}
+@media(max-width:899px){
+ :root:root .side .row{flex-wrap:wrap!important}
+ :root:root .sbrand{flex:1 1 100%!important;min-width:0}
+ :root:root .sbrand b{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;overflow-wrap:normal!important}
+ :root:root .sright{flex:1 1 100%!important;flex-wrap:wrap}
+}`;
+ document.head.appendChild(st);
+ function homeNotices(){
+  const dash=$('dashboard');if(!dash)return;
+  const on=document.body.classList.contains('pubOn')&&pubSet().showNotices;
+  let h=$('homeNotices');
+  if(!h){h=document.createElement('div');h.id='homeNotices'}
+  try{const dn=$('dashNotices');const p=dn&&dn.closest('.panel');if(p)p.style.display=on?'none':(pubSet().showNotices||isAdminView()?'':'none')}catch(e){}
+  if(!on){h.hidden=true;h.innerHTML='';return}
+  const list=(S.notices||[]).filter(noticeVisible);
+  h.hidden=false;
+  h.innerHTML='<div class="sec-head"><div><h3>নোটিশ</h3></div></div>'+(list.length?list.map(n=>noticeCard(n,false)).join(''):'<div class="empty">এখনো কোনো নোটিশ নেই</div>');
+  if(h.parentNode!==dash||dash.lastElementChild!==h)dash.appendChild(h);
+ }
+ {const _r=renderDashboard;renderDashboard=function(){_r();try{homeNotices()}catch(e){}}}
+ {const _n=renderNotices;renderNotices=function(){_n();try{homeNotices()}catch(e){}}}
+ try{homeNotices()}catch(e){}
 })();
 </script>
 </body></html>
