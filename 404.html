@@ -85,10 +85,12 @@
   var t=sess?await token():null,r,h={'Content-Type':'application/json'};
   if(t)h.Authorization='Bearer '+t;
   try{r=await fetch(FS+'/'+path+(q?q+'&':'?')+'key='+K,{method:method,headers:h,body:body?JSON.stringify(body):undefined})}catch(e){setNet(false);throw err('network')}
-  setNet(true);if(r.status===404)return null;
-  if(!r.ok){throw err(r.status===401||r.status===403?'invalid_argument':'server','HTTP '+r.status)}
-  try{return await r.json()}catch(e){return {}}
+  if(r.status!==429&&r.status<500)setNet(true);if(r.status===404){rc(path,method,1);return null}
+  if(!r.ok){if(r.status===429||r.status>=500)setNet(false);throw err(r.status===401||r.status===403?'invalid_argument':'server','HTTP '+r.status)}
+  try{var jj=await r.json();rc(path,method,jj&&jj.documents?jj.documents.length:(jj&&jj.name?1:0));return jj}catch(e){return {}}
  }
+ /* রিড কাউন্টার: কোন পথ থেকে কত ডক পড়া হলো */
+ function rc(p,m,n){if(m!=='GET')return;try{var d=new Date(Date.now()-8*3600e3).toISOString().slice(0,10),R=lget('bm_rc')||{};if(R.d!==d)R={d:d,t:0,p:{}};if(n<1)n=1;R.t+=n;var k=String(p).split('?')[0];R.p[k]=R.p[k]||[0,0];R.p[k][0]+=n;R.p[k][1]++;lset('bm_rc',R)}catch(e){}}
  /* roles/* ডকুমেন্টে আসল ফিল্ড (রুলস পড়ে), বাকি সব {j:"JSON"} */
  function enc(p,v){
   if(p.indexOf('libFiles/')===0||p.indexOf('libDocs/')===0||p.indexOf('roles/')===0||p.indexOf('perm/')===0||p.indexOf('chat/')===0||p.indexOf('regs/')===0||p.indexOf('notifs/')===0||p.indexOf('devices/')===0||p==='pub/settings'){
@@ -167,19 +169,19 @@
   if(cur&&cur!=='none'){CVm[name]={m:cur,t:Date.now()};saveCV()}}
  async function reloadAll(){
   var seen={};
-  for(var i=0;i<subs.length;i++){var s=subs[i];if(seen[s.path])continue;seen[s.path]=1;try{if(s.doc)await loadPath(s.path,true);else await syncCol(s.path)}catch(e){if(e.code==='network')return;if(e.code==='invalid_argument')dropPath(s.path,s.doc)}}
+  for(var i=0;i<subs.length;i++){var s=subs[i];if(seen[s.path])continue;seen[s.path]=1;try{if(s.doc)await loadPath(s.path,true);else await syncCol(s.path)}catch(e){if(e.code==='network'||e.code==='server')return;if(e.code==='invalid_argument')dropPath(s.path,s.doc)}}
  }
  var lastBg=0;
  async function poll(){
-  if(document.hidden){if(Date.now()-lastBg<40000)return;lastBg=Date.now()}
   if(Q.length)await flush();
+  if(document.hidden)return; /* ব্যাকগ্রাউন্ডে পোলিং বন্ধ — Firestore রিড বাঁচাতে */
   try{
    var m=await readDoc('meta/v'),v=m?JSON.stringify(m):'none';
    if(lastV===null){lastV=v;return}
    if(v!==lastV){lastV=v;await reloadAll()}
   }catch(e){}
  }
- function startPoll(){if(!timer)timer=setInterval(poll,30000)}
+ function startPoll(){if(!timer)timer=setInterval(poll,60000)}
  function stopPoll(){if(timer){clearInterval(timer);timer=null}subs=[];lastV=null}
  document.addEventListener('visibilitychange',function(){if(!document.hidden)poll()});
 
@@ -193,7 +195,7 @@
   function local(){markC(p);if(m==='DELETE')delete store[p];else store[p]=clone(data);persist();emit(p)}
   if(!Q.length){
    try{var r=await fs(m,p,m==='DELETE'?null:enc(p,data));if(m==='DELETE')delete UT[p];else if(r&&r.updateTime)UT[p]=r.updateTime;local();touch();return}
-   catch(e){if(e.code!=='network')throw e}
+   catch(e){if(e.code!=='network'&&e.code!=='server')throw e}
   }
   Q.push({m:m,p:p,data:m==='DELETE'?null:clone(data),base:base,t:Date.now()});qsave();local();notify();
   setTimeout(flush,50);
@@ -204,7 +206,7 @@
    while(Q.length){
     var op=Q[0];
     if(op.base){
-     var cur;try{cur=await fs('GET',op.p)}catch(e){if(e.code==='network')break;Q.shift();C.push({op:op,reason:'rejected',t:Date.now()});qsave();notify();continue}
+     var cur;try{cur=await fs('GET',op.p)}catch(e){if(e.code==='network'||e.code==='server')break;Q.shift();C.push({op:op,reason:'rejected',t:Date.now()});qsave();notify();continue}
      var sut=cur&&cur.updateTime||null;
      if(sut!==op.base){Q.shift();C.push({op:op,server:cur&&cur.fields?dec(cur):null,sut:sut,reason:'conflict',t:Date.now()});qsave();notify();continue}
     }
@@ -212,7 +214,7 @@
      var r=await fs(op.m,op.p,op.m==='DELETE'?null:enc(op.p,op.data));Q.shift();markC(op.p);var nu=r&&r.updateTime;
      if(op.m==='DELETE')delete UT[op.p];else if(nu){UT[op.p]=nu;Q.forEach(function(o){if(o.p===op.p&&o.base)o.base=nu})}
      did=true;qsave();notify();
-    }catch(e){if(e.code==='network')break;Q.shift();C.push({op:op,reason:'rejected',t:Date.now()});qsave();notify()}
+    }catch(e){if(e.code==='network'||e.code==='server')break;Q.shift();C.push({op:op,reason:'rejected',t:Date.now()});qsave();notify()}
    }
   }finally{flushing=false}
   if(did){lastSync=Date.now();persist();touch();notify()}
@@ -233,12 +235,12 @@
   get:async function(){
    if(p.indexOf('libFiles/')===0){var rd=await fs('GET',p),rv=rd&&rd.fields?dec(rd):undefined;return {id:p.split('/').pop(),exists:rv!==undefined,data:function(){return rv}}}
    try{var v=await readDoc(p);if(v===undefined)delete store[p];else store[p]=v;persist()}
-   catch(e){if(!(e.code==='network'&&store[p]!==undefined))throw e}
+   catch(e){if(!((e.code==='network'||e.code==='server')&&store[p]!==undefined))throw e}
    return snapDoc(p);
   },
   set:async function(d){await write('PATCH',p,d)},
   update:async function(d){
-   var cur;if(Q.length||!netOk){cur=store[p]}else{try{cur=await readDoc(p)}catch(e){if(e.code!=='network')throw e;cur=store[p]}}
+   var cur;if(Q.length||!netOk){cur=store[p]}else{try{cur=await readDoc(p)}catch(e){if(e.code!=='network'&&e.code!=='server')throw e;cur=store[p]}}
    if(cur===undefined)throw err('invalid_argument');
    await write('PATCH',p,Object.assign({},cur,clone(d)));
   },
@@ -261,6 +263,7 @@
    return function(){subs=subs.filter(function(x){return x!==s})};
   }}}
  var db={collection:function(n){return colRef(n)},doc:docRef};
+ Auth.rc=function(){return lget('bm_rc')};Auth.rcReset=function(){ldel('bm_rc')};
  window.BMAUTH=Auth;
  window.claude={use:function(n){return Promise.resolve(n==='db'?db:null)}};
 })();
@@ -3907,7 +3910,7 @@ function payerLedger(name){
 
 /* ===== v26: সার্চ, নিজের হিসাব, অফলাইন বার্তা, নতুন সংস্করণ ===== */
 (function(){
-  const APP_VER=99;window.APP_VER_N=99;window.APP_NAME='2.0.5-web';
+  const APP_VER=102;window.APP_VER_N=102;window.APP_NAME='2.0.8-web';
   /* সার্চ: আয়-ব্যয় ও কর্মচারী */
   [['txTable','আয়-ব্যয় খুঁজুন…'],['staffTable','কর্মচারী খুঁজুন…']].forEach(([id,ph])=>{
     const t=$(id);if(!t)return;const inp=document.createElement('input');inp.placeholder=ph;inp.style.cssText='width:100%;margin:10px 0 0';inp.type='search';t.before(inp);
@@ -6310,6 +6313,23 @@ body.pubOn .work{padding-bottom:28px!important}
  {const _r=renderDashboard;renderDashboard=function(){_r();try{homeNotices()}catch(e){}}}
  {const _n=renderNotices;renderNotices=function(){_n();try{homeNotices()}catch(e){}}}
  try{homeNotices()}catch(e){}
+})();
+/* ===== রিড কাউন্টার (সেটিংসে) ===== */
+(function(){
+ const st=document.createElement('style');st.textContent='#rcSet{margin-top:14px}#rcSet table{width:100%;border-collapse:collapse;font-size:13px}#rcSet td,#rcSet th{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left}#rcSet td:nth-child(n+2),#rcSet th:nth-child(n+2){text-align:right}';
+ document.head.appendChild(st);
+ function fill(d){
+  const R=(window.BMAUTH&&window.BMAUTH.rc&&window.BMAUTH.rc())||{};const P=R.p||{};
+  const rows=Object.keys(P).map(k=>[k,P[k][0],P[k][1]]).sort((a,b)=>b[1]-a[1]);
+  d.querySelector('.rcb').innerHTML='<div class="hint2">এই ডিভাইসে Firestore থেকে কত ডক্যুমেন্ট পড়া হয়েছে (দিন = Firebase-এর প্যাসিফিক দিন, '+esc(R.d||'—')+')। প্রথমে "শূন্য করুন" চাপুন, তারপর অ্যাপ বন্ধ করে আবার খুলুন, তারপর এখানে এসে দেখুন।</div><p><b>মোট রিড: '+bn(R.t||0)+'</b></p>'+(rows.length?'<table><thead><tr><th>পথ</th><th>রিড</th><th>কল</th></tr></thead><tbody>'+rows.slice(0,25).map(r=>'<tr><td>'+esc(r[0])+'</td><td>'+bn(r[1])+'</td><td>'+bn(r[2])+'</td></tr>').join('')+'</tbody></table>':'<div class="empty">এখনো কিছু নেই</div>')+'<button class="btn sec sm" type="button" id="rcReset" style="margin-top:8px">শূন্য করুন</button>';
+  const b=d.querySelector('#rcReset');if(b)b.onclick=()=>{try{window.BMAUTH.rcReset()}catch(e){}fill(d)};
+ }
+ function ensure(){
+  const s=$('settings');if(!s||$('rcSet'))return;
+  const d=document.createElement('details');d.id='rcSet';d.innerHTML='<summary>রিড কাউন্টার (Firebase ব্যবহার দেখুন)</summary><div class="rcb"></div>';
+  s.appendChild(d);d.addEventListener('toggle',()=>{if(d.open)fill(d)});
+ }
+ {const _o=openTab;openTab=function(id,fb){_o(id,fb);if(id==='settings'&&S.super)try{ensure()}catch(e){}}}
 })();
 </script>
 </body></html>
