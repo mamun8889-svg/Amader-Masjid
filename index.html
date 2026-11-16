@@ -3910,7 +3910,7 @@ function payerLedger(name){
 
 /* ===== v26: সার্চ, নিজের হিসাব, অফলাইন বার্তা, নতুন সংস্করণ ===== */
 (function(){
-  const APP_VER=102;window.APP_VER_N=102;window.APP_NAME='2.0.8-web';
+  const APP_VER=104;window.APP_VER_N=104;window.APP_NAME='2.0.9-web';
   /* সার্চ: আয়-ব্যয় ও কর্মচারী */
   [['txTable','আয়-ব্যয় খুঁজুন…'],['staffTable','কর্মচারী খুঁজুন…']].forEach(([id,ph])=>{
     const t=$(id);if(!t)return;const inp=document.createElement('input');inp.placeholder=ph;inp.style.cssText='width:100%;margin:10px 0 0';inp.type='search';t.before(inp);
@@ -6330,6 +6330,23 @@ body.pubOn .work{padding-bottom:28px!important}
   s.appendChild(d);d.addEventListener('toggle',()=>{if(d.open)fill(d)});
  }
  {const _o=openTab;openTab=function(id,fb){_o(id,fb);if(id==='settings'&&S.super)try{ensure()}catch(e){}}}
+})();
+/* ===== হেডার: সব এক লাইনে (ছোট স্ক্রিনে) ===== */
+(function(){
+ const st=document.createElement('style');st.textContent=`
+@media(max-width:899px){
+ :root:root:root .side .row{flex-wrap:wrap!important;gap:6px!important;align-items:center!important}
+ :root:root:root .sbrand{flex:1 1 120px!important;min-width:0!important;gap:7px!important}
+ :root:root:root .sbrand .slogo{width:36px!important;height:36px!important;flex:none}
+ :root:root:root .sbrand .slogo img,:root:root:root .sbrand .slogo svg{width:100%!important;height:100%!important}
+ :root:root:root .sbrand b{font-size:13px!important}
+ :root:root:root .sright{flex:0 0 auto!important;width:auto!important;gap:4px!important;flex-wrap:nowrap!important;margin-left:auto}
+ :root:root:root .sright .pill{padding:5px 7px!important;min-height:32px;flex:none}:root:root:root .sright .pill svg{width:16px!important;height:16px!important}
+ :root:root:root body.admin .side .row{flex-wrap:nowrap!important}
+ :root:root:root body.admin #roleChip,:root:root:root body.admin #logoutBtn{font-size:0!important;padding:5px 7px!important;min-width:32px;display:inline-flex;align-items:center;justify-content:center}
+ :root:root:root body.admin #logoutBtn::before{content:"\\23FB";font-size:16px}
+ }`;
+ document.head.appendChild(st);
 })();
 </script>
 </body></html>
