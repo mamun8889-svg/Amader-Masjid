@@ -76,7 +76,7 @@
  };
  function signOut(w){
   if(w&&sess){ldel(OK+String(sess.email).toLowerCase());ldel(CK+'ut_'+sess.uid);ldel(QK+sess.uid);ldel(QK+'c_'+sess.uid)}
-  if(sess&&!offHas(sess.email)){ldel(CK+sess.uid);ldel(CK+'cv_'+sess.uid)}ldel(CK+'pub');ldel(CK+'cv_pub');CVm={};
+  ldel(CK+'pub');ldel(CK+'cv_pub');CVm={};
   ldel(SK);sess=null;store={};loaded={};UT={};Q=[];C=[];stopPoll();
  }
 
@@ -831,8 +831,6 @@ body.ahOn .hero::before{content:"";position:absolute;inset:0;border-radius:inher
 .rip{position:absolute;border-radius:50%;background:rgba(246,180,74,.35);transform:scale(0);animation:ripple .6s ease-out forwards;pointer-events:none;z-index:5}
 @keyframes ripple{to{transform:scale(1);opacity:0}}
 .hero,.ahc,.ahb,.ahx,.kpi,.cmc,.dnc{overflow:hidden}
-body.ahOn #salary>*:not(#payWrap){display:none!important}
-body.ahOn #transactions>*:not(.sec-head):not(#txSel):not(#txStats){display:none!important}
 #conList .person{cursor:pointer}
 /* বার্তা ফর্ম */
 #mBody .bmr{border-left:4px solid var(--indigo);padding:8px 10px;background:var(--surface2);border-radius:12px;margin-bottom:8px;border-bottom:0;text-align:left}
@@ -3910,7 +3908,7 @@ function payerLedger(name){
 
 /* ===== v26: সার্চ, নিজের হিসাব, অফলাইন বার্তা, নতুন সংস্করণ ===== */
 (function(){
-  const APP_VER=104;window.APP_VER_N=104;window.APP_NAME='2.0.9-web';
+  const APP_VER=108;window.APP_VER_N=108;window.APP_NAME='2.0.13-web';
   /* সার্চ: আয়-ব্যয় ও কর্মচারী */
   [['txTable','আয়-ব্যয় খুঁজুন…'],['staffTable','কর্মচারী খুঁজুন…']].forEach(([id,ph])=>{
     const t=$(id);if(!t)return;const inp=document.createElement('input');inp.placeholder=ph;inp.style.cssText='width:100%;margin:10px 0 0';inp.type='search';t.before(inp);
@@ -4186,8 +4184,7 @@ const PZ={rows:null,note:'',ov:{jamat:{},ov:{},hist:[]},loaded:false};
     el.hidden=false;
     const n=NOW();
     if(!AH.manual){const L=locate(n.d>=25?n.abs:n.abs-1)||{y:2026,m:0};AH.y=L.y;AH.m=L.m}
-    el.innerHTML=`<button class="btn ahenter" type="button" id="ahEnter"><span>বেতন এন্ট্রি করুন</span></button>
-     <div class="ahcards two">${sumCard('গত মাস',n.abs-1)}${sumCard('চলতি মাস',n.abs)}</div>
+    el.innerHTML=`<div class="ahcards two">${sumCard('গত মাস',n.abs-1)}${sumCard('চলতি মাস',n.abs)}</div>
      <details class="ahrep" id="ahDet"><summary>অন্য মাস/বছরের রিপোর্ট দেখুন</summary><div id="ahBody">${selReport()}</div></details>`;
   }
   function modalList(kind,y,m){
@@ -5637,7 +5634,7 @@ ${p.old.length?`<div class="ml"><span>এই মাসগুলোর আগে�
 .pdh{display:grid;gap:8px;margin-bottom:10px}.pdh .ml{display:flex;justify-content:space-between}
 .pdb{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 /* অ্যাডমিন হোম */
-body.ahOn #fab{display:none!important}
+
 #adminHome .ahenter{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;border:0;border-radius:999px;padding:16px 20px;font:800 19px inherit;color:#fff;background:linear-gradient(120deg,#059669,#0d9488 45%,#d97706);box-shadow:0 8px 22px rgba(5,150,105,.45),inset 0 0 0 2px rgba(255,255,255,.25);position:relative;overflow:hidden;animation:ahpulse 2.6s ease-in-out infinite}
 #adminHome .ahenter svg{width:28px;height:28px;flex:0 0 auto}
 #adminHome .ahenter::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-20deg);animation:ahshine 3.4s ease-in-out infinite}
@@ -6344,7 +6341,7 @@ body.pubOn .work{padding-bottom:28px!important}
  :root:root:root .sright .pill{padding:5px 7px!important;min-height:32px;flex:none}:root:root:root .sright .pill svg{width:16px!important;height:16px!important}
  :root:root:root body.admin .side .row{flex-wrap:nowrap!important}
  :root:root:root body.admin #roleChip,:root:root:root body.admin #logoutBtn{font-size:0!important;padding:5px 7px!important;min-width:32px;display:inline-flex;align-items:center;justify-content:center}
- :root:root:root body.admin #logoutBtn::before{content:"\\23FB";font-size:16px}
+ :root:root:root body.admin #logoutBtn::before{content:"";width:16px;height:16px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M12 2.5v9'/%3E%3Cpath d='M17.7 6.3a8.5 8.5 0 1 1-11.4 0'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M12 2.5v9'/%3E%3Cpath d='M17.7 6.3a8.5 8.5 0 1 1-11.4 0'/%3E%3C/svg%3E") center/contain no-repeat}
  }`;
  document.head.appendChild(st);
 })();
