@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">আমাদের মসজিদ</string>
+    <string name="w_name">রাধানগর পশ্চিম পাড়া বাইতুল মা\'মুর জামে মসজিদ</string>
+    <string name="w_desc">তারিখ (ইংরেজি, বঙ্গাব্দ, হিজরি) ও সূর্যোদয়-সূর্যাস্ত</string>
+    <string name="w_name2">নামাজের সময়</string>
+    <string name="w_desc2">নামাজের সময়, পরবর্তী ওয়াক্ত ও Countdown</string>
+</resources>

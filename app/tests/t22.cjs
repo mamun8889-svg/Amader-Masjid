@@ -1,0 +1,23 @@
+const L=require('./lib.cjs');
+(async()=>{
+ const {p}=await L.start('index20.html');p.setDefaultTimeout(8000);
+ const errs=[];p.on('pageerror',e=>errs.push(e.message));
+ await p.waitForTimeout(1200);
+ console.log('navhidden',await p.evaluate(()=>Math.round(document.getElementById('nav').getBoundingClientRect().right)));
+ await p.click('.slogo');await p.waitForTimeout(500);
+ console.log('open',await p.evaluate(()=>[Math.round(document.getElementById('nav').getBoundingClientRect().left),[...document.querySelectorAll('#nav button')].map(b=>b.textContent.trim()).join('|')]));
+ await p.screenshot({path:'dr.png'});
+ await p.click('#nav [data-tab="profile"]');await p.waitForTimeout(700);
+ console.log('closed after pick',await p.evaluate(()=>[document.body.classList.contains('navopen'),document.getElementById('profile').classList.contains('active')]));
+ await p.fill('#pfName','আব্দুল্লাহ');await p.fill('#pfPhone','01711111111');await p.fill('#pfAddr','রায়পুরা');await p.selectOption('#pfSex','পুরুষ');
+ await p.click('#pfForm button[type=submit]');await p.waitForTimeout(800);
+ await p.screenshot({path:'pf.png',fullPage:true});
+ await p.evaluate(()=>{loadedFor='';});
+ console.log('pfAll hidden',await p.evaluate(()=>document.getElementById('pfAll').hidden),await p.evaluate(()=>document.getElementById('pfList').textContent.slice(0,120)));
+ await p.click('.slogo');await p.waitForTimeout(400);await p.mouse.click(380,500);await p.waitForTimeout(400);
+ console.log('backdrop closes',await p.evaluate(()=>!document.body.classList.contains('navopen')));
+ await p.evaluate(()=>openTab('settings'));await p.waitForTimeout(500);
+ console.log('bk',await p.evaluate(()=>document.getElementById('bkInfo2').textContent));
+ console.log(await p.evaluate(()=>getComputedStyle(document.getElementById('bkRemind')).display));
+ console.log(errs);process.exit();
+})();

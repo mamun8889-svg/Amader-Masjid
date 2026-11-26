@@ -1,0 +1,6 @@
+নামাজ-উইজেট পুনরুদ্ধার (v29-এ নিষ্ক্রিয় করা হয়েছে, সব সংরক্ষিত)
+সম্পূর্ণ কার্যকর সংস্করণ = APK v28 (Baitul-Mamur-v28.apk) ও index29.html (versionCode 44)।
+ফিরিয়ে আনতে: index30.html-এ (১) TABS-এ {id:'prayer',t:'নামাজের সময়',i:'cal'} যোগ, (২) "function start(){return;" থেকে "return;" বাদ, (৩) widget push()-এর "return;" বাদ, setTimeout(pzPush,3000) ফেরত;
+native: proj-widget-v28/PrayerWidget.smali (জেনারেটর prayer-widget/gen_pw.py), AndroidManifest-এ PrayerWidget receiver (prayer-widget/ ও PROGRESS.md দেখুন), res/xml/prayer_widget_info.xml, w_prev2.png, strings w_name2/w_desc2। 
+ডেটা: prayer/m01..m12.txt, prow.json (৩৬৫ দিন)। rules: firestore-rules-v12.txt। নির্দেশনা: PRAYER_WIDGET_SPEC.txt, PRAYER_WIDGET_GUIDE.txt।
+সহজ উপায়: index29.html দিয়ে mk.sh চালালে v28 আবার পাওয়া যাবে (manifest-এ receiver ফেরাতে হবে)।

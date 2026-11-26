@@ -1,0 +1,63 @@
+Existing Homepage Enhancement — Animation & Micro-interaction
+
+তোমার কাজ হলো বায়তুল মামুর জামে মসজিদ ম্যানেজমেন্ট সফটওয়্যারের বিদ্যমান হোমপেজকে আরও প্রাণবন্ত, আধুনিক ও আকর্ষণীয় করে তোলা।
+
+সবচেয়ে গুরুত্বপূর্ণ নির্দেশনা
+
+বর্তমান ডিজাইন ১০০% অপরিবর্তিত রাখতে হবে।
+
+নিচের কোনো বিষয় পরিবর্তন করা যাবে না:
+
+- বর্তমান কালার কম্বিনেশন।
+- কার্ডের অবস্থান ও বিন্যাস।
+- কার্ডের আকার ও সামগ্রিক লেআউট।
+- হেডার ও নেভিগেশন ডিজাইন।
+- বর্তমান ফন্ট ও টাইপোগ্রাফির ধরন।
+- বিদ্যমান তথ্যের অবস্থান।
+- হোমপেজের সামগ্রিক কাঠামো।
+
+নতুন করে কোনো Dashboard Design তৈরি করবে না। বর্তমান ডিজাইনের ওপরেই Enhancement করবে।
+
+১. Animation
+
+- Page Load Fade-in Animation।
+- Card Staggered Entrance Animation।
+- Number Count-up Animation।
+- Subtle Golden Glow।
+- Smooth Border Highlight।
+- Notification Pulse Animation।
+- Floating Action Button-এর Subtle Animation।
+- Button Press Feedback।
+- Smooth Dropdown Transition।
+- Smooth Page Transition।
+
+২. Dynamic Elements
+
+- প্রকৃত ডেটা থেকে পরিসংখ্যান Animated Counter দিয়ে দেখাবে।
+- বেতন প্রদানের অনুপাত Progress Bar দিয়ে ফুটিয়ে তুলবে।
+- বিদ্যমান কার্ডের ভেতরে প্রয়োজন অনুযায়ী ছোট Mini Chart যুক্ত করবে।
+- সাম্প্রতিক কার্যক্রমের তথ্য থাকলে সুন্দর Micro-interaction সহ দেখাবে।
+- নতুন নোটিফিকেশন থাকলে Badge ও Subtle Pulse দেখাবে।
+
+৩. Animation Quality
+
+- সব অ্যানিমেশন হবে Smooth, Lightweight এবং Professional।
+- অতিরিক্ত Animation বা Flashing Effect ব্যবহার করা যাবে না।
+- ব্যবহারকারীর চোখের আরাম বজায় রাখতে হবে।
+- মোবাইল ডিভাইসে Performance ও Battery Consumption বিবেচনা করতে হবে।
+- Reduced Motion Preference সমর্থন করতে হবে।
+
+৪. Data Integrity
+
+- কোনো কাল্পনিক সংখ্যা বা আর্থিক তথ্য ব্যবহার করা যাবে না।
+- সব সংখ্যা Firestore-এর প্রকৃত ডেটা থেকে আসবে।
+- অ্যানিমেশনের কারণে কোনো হিসাব বা ডেটা পরিবর্তন হওয়া যাবে না।
+- বিদ্যমান Authentication, Role Permission ও Database Logic অপরিবর্তিত থাকবে।
+
+৫. Final Requirement
+
+প্রথমে বিদ্যমান হোমপেজের কোড পরীক্ষা করো। এরপর শুধু প্রয়োজনীয় CSS Animation, Lightweight JavaScript Micro-interaction এবং সীমিত UI Enhancement যুক্ত করো।
+
+কোনো বিদ্যমান কার্যকর ফিচার বাদ দেবে না।
+
+চূড়ান্ত ফলাফল এমন হতে হবে যেন ব্যবহারকারী প্রথম দেখাতেই বুঝতে পারেন—এটি আগের সেই পরিচিত ডিজাইন, কিন্তু আগের চেয়ে অনেক বেশি জীবন্ত, আধুনিক ও প্রিমিয়াম।

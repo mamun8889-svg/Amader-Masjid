@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signed() { return request.auth != null && exists(/databases/$(db)/documents/roles/$(request.auth.uid)); }
+    function role() { return get(/databases/$(db)/documents/roles/$(request.auth.uid)).data.role; }
+    function isSuper() { return signed() && role() == 'super'; }
+    function isAdmin() { return signed() && (role() == 'admin' || role() == 'super'); }
+    function pubOn(k) {
+      return !exists(/databases/$(db)/documents/pub/settings)
+        || get(/databases/$(db)/documents/pub/settings).data.get(k, true) != false;
+    }
+    function canDel() {
+      return isSuper() || (isAdmin() && exists(/databases/$(db)/documents/perm/admin)
+        && get(/databases/$(db)/documents/perm/admin).data.get('del', false) == true);
+    }
+
+    match /roles/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create, update: if isSuper() && request.auth.uid != uid && request.resource.data.role in ['admin', 'viewer'];
+      allow delete: if isSuper() && request.auth.uid != uid;
+    }
+    match /meta/{d} { allow read: if true; allow write: if signed(); }
+    match /chat/{d} {
+      allow read: if signed();
+      allow create: if signed() && request.resource.data.uid == request.auth.uid && request.resource.data.text is string && request.resource.data.text.size() <= 600;
+      allow update: if false;
+      allow delete: if signed() && (resource.data.uid == request.auth.uid || isSuper());
+    }
+    match /notifs/{d} { allow read: if signed() || pubOn('showNotices'); allow create, delete: if isAdmin(); allow update: if false; }
+    match /appdata/{d} { allow read: if signed() || pubOn('showSalary'); allow write: if isAdmin(); }
+    match /edits/{d} { allow read: if signed() || pubOn('showSalary'); allow write: if isAdmin(); }
+    match /notices/{d} { allow read: if signed() || pubOn('showNotices'); allow write: if isAdmin(); }
+    match /noticeFiles/{d} { allow read: if signed() || pubOn('showNotices'); allow write: if isAdmin(); }
+    match /pub/settings { allow read: if true; allow write: if isSuper(); }
+    match /pub/prayer { allow read: if true; allow write: if isSuper(); }
+    match /pub/prayerOv { allow read: if true; allow write: if isAdmin(); }
+    match /pub/donate { allow read: if signed() || pubOn('showDonate'); allow write: if isSuper(); }
+    match /pub/summary { allow read: if signed(); allow write: if isAdmin(); }
+    match /pub/fs { allow read: if signed() || (pubOn('showSummary') && pubOn('showSalFund')); allow write: if isAdmin(); }
+    match /pub/fg { allow read: if signed() || (pubOn('showSummary') && pubOn('showGenFund')); allow write: if isAdmin(); }
+    match /pub/fr { allow read: if signed() || (pubOn('showSummary') && pubOn('showRamFund')); allow write: if isAdmin(); }
+    match /devices/{id} {
+      allow read: if request.auth != null && (id.matches(request.auth.uid + '_.*') || isSuper());
+      allow create: if request.auth != null && id.matches(request.auth.uid + '_.*') && (request.resource.data.status == 'pending' || isSuper());
+      allow update, delete: if isSuper();
+    }
+    match /profiles/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isSuper());
+      allow create, update: if request.auth != null && request.auth.uid == uid && signed();
+      allow delete: if isSuper();
+    }
+    match /perm/{d} { allow read: if isAdmin(); allow write: if isSuper(); }
+    match /auditLog/{d} { allow read: if isSuper(); allow create: if isAdmin(); allow update, delete: if false; }
+    match /{c}/{d} {
+      allow read, create, update: if isAdmin() && c in ['tx', 'donors', 'staff', 'payments', 'adminData', 'backups'];
+      allow delete: if c in ['tx', 'donors', 'staff', 'payments', 'adminData', 'backups'] && canDel();
+    }
+  }
+}
